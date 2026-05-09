@@ -89,7 +89,4 @@ let
   # injects them inside the sandbox, while the attrs below set them in the
   # outer nix-shell where uv may also be invoked directly.
 in pkgs.mkShell { packages = [ pkgs.uv pkgs.python3 claude-sandboxed ]; }
-// pkgs.lib.optionalAttrs isLinux {
-  UV_NO_MANAGED_PYTHON = "1";
-  LD_LIBRARY_PATH = ldLibraryPath;
-}
+// pkgs.lib.optionalAttrs isLinux linuxEnv
