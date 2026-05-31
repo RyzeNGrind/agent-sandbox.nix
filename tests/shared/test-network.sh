@@ -17,7 +17,7 @@ run() { "$NET_SHELL" --norc --noprofile -c "$@" >/dev/null 2>&1; }
 
 # Test 1: allowed domain works
 expect_ok "allowed domain (httpbin.org) reachable" \
-	'curl -sf --max-time 10 -o /dev/null http://httpbin.org/get'
+	'curl -sf --retry 3 --retry-delay 2 --retry-connrefused --max-time 10 -o /dev/null http://httpbin.org/get'
 
 # Test 2: blocked domain fails
 expect_fail "blocked domain (example.com) denied" \
@@ -29,17 +29,17 @@ UNRES_SHELL="$SANDBOXED_UNRES/bin/sandboxed-bash-unres"
 run() { "$UNRES_SHELL" --norc --noprofile -c "$@" >/dev/null 2>&1; }
 
 expect_ok "unrestricted mode can reach any domain" \
-	'curl -s --max-time 10 -o /dev/null http://example.com'
+	'curl -s --retry 3 --retry-delay 2 --retry-connrefused --max-time 10 -o /dev/null http://example.com'
 
 # Test 4: HTTPS with SSL verification works (proves CA injection)
 run() { "$NET_SHELL" --norc --noprofile -c "$@" >/dev/null 2>&1; }
 
 expect_ok "HTTPS with SSL verification works (MITM CA injection)" \
-	'curl -sf --max-time 10 -o /dev/null https://httpbin.org/get'
+	'curl -sf --retry 3 --retry-delay 2 --retry-connrefused --max-time 10 -o /dev/null https://httpbin.org/get'
 
 # Test 5: list format allows all methods (POST should succeed, proving "*" conversion)
 expect_ok "list format allows POST (backward-compat wildcard)" \
-	'curl -sf --max-time 10 -X POST -o /dev/null https://httpbin.org/post'
+	'curl -sf --retry 3 --retry-delay 2 --retry-connrefused --max-time 10 -X POST -o /dev/null https://httpbin.org/post'
 
 # Test 6: empty allowlist blocks everything
 SANDBOXED_BLOCK=$(nix-build --no-out-link "$SCRIPT_DIR/../fixtures/network-blocked.nix")
@@ -57,7 +57,7 @@ run() { "$METHOD_SHELL" --norc --noprofile -c "$@" >/dev/null 2>&1; }
 
 # Test 8: Allowed method succeeds (GET to httpbin.org)
 expect_ok "allowed method (GET httpbin.org) succeeds" \
-	'curl -sf --max-time 10 -o /dev/null https://httpbin.org/get'
+	'curl -sf --retry 3 --retry-delay 2 --retry-connrefused --max-time 10 -o /dev/null https://httpbin.org/get'
 
 # Test 9: Blocked method returns 403 (POST to httpbin.org)
 expect_fail "blocked method (POST httpbin.org) denied" \
@@ -65,7 +65,7 @@ expect_fail "blocked method (POST httpbin.org) denied" \
 
 # Test 10: Wildcard method domain allows POST (pie.dev)
 expect_ok "wildcard method domain allows POST" \
-	'curl -sf --max-time 10 -X POST -d "test=1" -o /dev/null https://pie.dev/post'
+	'curl -sf --retry 3 --retry-delay 2 --retry-connrefused --max-time 10 -X POST -d "test=1" -o /dev/null https://pie.dev/post'
 
 # Test 11: URL > 8KB returns 414
 LONG_PATH=$(printf 'x%.0s' $(seq 1 8200))
@@ -78,7 +78,7 @@ expect_fail "WebSocket upgrade blocked" \
 
 # Test 13: subdomain of allowed domain works (suffix matching)
 expect_ok "subdomain of allowed domain works (www.httpbin.org)" \
-	'curl -sf --max-time 10 -o /dev/null https://www.httpbin.org/get'
+	'curl -sf --retry 3 --retry-delay 2 --retry-connrefused --max-time 10 -o /dev/null https://www.httpbin.org/get'
 
 # Test 14: non-subdomain with shared suffix is blocked (no false suffix match)
 expect_fail "shared-suffix non-subdomain blocked (nothttpbin.org)" \
