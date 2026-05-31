@@ -158,7 +158,7 @@ extraEnv = {
 If your agent stores credentials in files (e.g. Claude Code uses `~/.claude/`), you can run the login flow unsandboxed first, then expose the credential directory via `stateDirs`. The sandboxed agent will pick up the cached credentials.
 
 <details>
-<summary><strong>macOS Keychain workaround</strong></summary>
+<summary><strong>On macOS you will need to export the credentials from the Keychain first</strong></summary>
 
 On macOS, Claude Code stores credentials in the system Keychain rather than in files. Since the sandbox cannot access the Keychain, the environment variable approach above is the simplest option.
 
