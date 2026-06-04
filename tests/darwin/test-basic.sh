@@ -32,5 +32,8 @@ expect_fail "cannot enumerate real home dir" "ls $REAL_HOME/"
 expect_ok "stat on /Users succeeds (path traversal)" "test -d /Users"
 expect_ok "stat on real home succeeds (path traversal)" "test -d $REAL_HOME"
 
+# --- TTY isolation (escape-sequence / TIOCSTI injection defense) ---
+expect_fail "cannot open /dev/tty for writes" "printf '\a' > /dev/tty"
+
 print_results
 exit_status
