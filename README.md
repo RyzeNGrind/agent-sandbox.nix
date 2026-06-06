@@ -318,4 +318,4 @@ There are several other tools for sandboxing AI agents. Here are a few:
 
 [**agent-box**](https://github.com/fletchgqc/agentbox) — A rust CLI that uses disposable containers with Jujutsu or Git worktrees. MacOS and Linux.
 
-[**jjinn**](https://github.com/anglesideangle/jjinn) — A nix script that sandboxes agents in ephemeral Jujutsu workspaces using bubblewrap. Linux only.
+[**ai-jail**](https://github.com/akitaonrails/ai-jail) — A Rust CLI that sandboxes agents using bubblewrap (with Landlock and seccomp) on Linux and sandbox-exec on macOS. Configured via a TOML file in the project directory.
