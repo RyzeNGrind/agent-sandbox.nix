@@ -202,6 +202,7 @@ in pkgs.writeTextFile {
         --symlink ${bashWrapper}/bin/bash /bin/sh \
         --symlink ${pkgs.coreutils}/bin/env /usr/bin/env \
         --unshare-all \
+        --hostname sandbox \
         --uid "$(id -u)" \
         --gid "$(id -g)" \
         --share-net \
