@@ -111,8 +111,8 @@ By default, network access is unrestricted. But you can optionally restrict conn
 
 `allowedDomains` accepts two formats:
 
-- **Attrset (recommended):** map each domain to `"*"` (all HTTP methods allowed) or a list of permitted methods (e.g. `[ "GET" "HEAD" ]`).
-- **List:** `[ "anthropic.com" "sentry.io" ]` — equivalent to allowing all methods for each domain.
+- Attrset (recommended): map each domain to `"*"` (all HTTP methods allowed) or a list of permitted methods (e.g. `[ "GET" "HEAD" ]`).
+- List: `[ "anthropic.com" "sentry.io" ]` — equivalent to allowing all methods for each domain.
 
 Domains are suffix-matched, so `"anthropic.com"` will capture all `*.anthropic.com` subdomains.
 
@@ -317,16 +317,16 @@ If the agent does something it shouldn't — runs a bad prompt, processes a mali
 
 The sandbox is an **isolation** boundary, not an **anonymity** boundary, and not a defense against an attacker who has already taken over your machine in some other way.
 
-- **The agent can fingerprint your machine.** It can see your hostname, hardware model, CPU, RAM, OS version, and rough network details. If you need the agent to *not know which machine it's running on*, this isn't the tool — you want a VM or a separate device.
-- **Anything you hand the agent, it has.** If you expose your `~/.claude` directory (or any credential file) via `stateDirs`, or pass a token through `extraEnv`, the agent can read it — that's how it logs in. A compromised agent has the same access to those credentials as your shell does. Treat this the way you'd treat handing the token to any other CLI tool you didn't write yourself.
-- **The agent can edit its own sandbox config.** `flake.nix` lives inside the project directory and is writable from inside the sandbox. An agent could weaken its own restrictions for the *next* session. Changes don't take effect until you re-enter the dev shell, so it's worth reviewing `git diff` before you do.
-- **No defense against root or kernel bugs.** If something on your machine has already gained administrator-level access, or there's a deeper bug in the operating system itself, this sandbox can't stop it.
+- The agent can fingerprint your machine. It can see your hostname, hardware model, CPU, RAM, OS version, and rough network details. If you need the agent to *not know which machine it's running on*, this isn't the tool — you want a VM or a separate device.
+- Anything you hand the agent, it has. If you expose your `~/.claude` directory (or any credential file) via `stateDirs`, or pass a token through `extraEnv`, the agent can read it — that's how it logs in. A compromised agent has the same access to those credentials as your shell does. Treat this the way you'd treat handing the token to any other CLI tool you didn't write yourself.
+- The agent can edit its own sandbox config. `flake.nix` lives inside the project directory and is writable from inside the sandbox. An agent could weaken its own restrictions for the *next* session. Changes don't take effect until you re-enter the dev shell, so it's worth reviewing `git diff` before you do.
+- No defense against root or kernel bugs. If something on your machine has already gained administrator-level access, or there's a deeper bug in the operating system itself, this sandbox can't stop it.
 
 ### Specific things worth being aware of
 
-- **Your username and home directory path are visible to the agent.** This is unavoidable — the agent needs to know where `$HOME/.claude` resolves to. If your username is itself sensitive, this isn't the right tool.
-- **All of `/nix/store` is readable, not just your allowed packages.** Only execution is restricted to your allowlist. The Nix store is normally world-readable on any system, so this matches existing behavior, but it does mean the agent can list every package you've built.
-- **`/tmp` is shared with the host.** The agent can see (but not connect to) sockets and files other programs leave there. Don't put secrets in `/tmp` while the sandbox is running.
+- Your username and home directory path are visible to the agent. This is unavoidable — the agent needs to know where `$HOME/.claude` resolves to. If your username is itself sensitive, this isn't the right tool.
+- All of `/nix/store` is readable, not just your allowed packages. Only execution is restricted to your allowlist. The Nix store is normally world-readable on any system, so this matches existing behavior, but it does mean the agent can list every package you've built.
+- `/tmp` is shared with the host. The agent can see (but not connect to) sockets and files other programs leave there. Don't put secrets in `/tmp` while the sandbox is running.
 
 ### Linux vs macOS
 
@@ -340,20 +340,20 @@ If your threat model is *"I assume the agent is actively malicious and need it t
 
 ## Caveats
 
-- **`sandbox-exec` is deprecated on macOS.** It remains the only native unprivileged sandboxing mechanism and currently works on macOS 26 (Tahoe) and older, but may break in a future release.
-- **Symlinks inside `stateDirs` and `stateFiles` are only followed to already-permitted paths.** A symlink is usable only if its target is the Nix store, the working directory, the Git directory, or another declared `stateDir`/`stateFile`. Anything else is blocked — this prevents an agent from planting a symlink during a session to expand its own sandbox on the next startup (e.g. `~/.claude/evil -> /etc/shadow`). To expose a non-permitted path that's currently reached via a symlink, declare it explicitly as a `stateDir` or `stateFile`. Symlinks into the Nix store are read-only. Platform differences: on Linux, only top-level symlinks inside a `stateDir` are detected (the startup scan is one level deep) and blocked targets produce a `sandbox: WARNING` line on startup; on macOS, symlinks are followed at any depth and denials happen at runtime — check `log show --predicate 'eventMessage CONTAINS "deny"'`.
+- `sandbox-exec` is deprecated on macOS. It remains the only native unprivileged sandboxing mechanism and currently works on macOS 26 (Tahoe) and older, but may break in a future release.
+- Symlinks inside `stateDirs` and `stateFiles` are only followed to already-permitted paths. A symlink is usable only if its target is the Nix store, the working directory, the Git directory, or another declared `stateDir`/`stateFile`. Anything else is blocked — this prevents an agent from planting a symlink during a session to expand its own sandbox on the next startup (e.g. `~/.claude/evil -> /etc/shadow`). To expose a non-permitted path that's currently reached via a symlink, declare it explicitly as a `stateDir` or `stateFile`. Symlinks into the Nix store are read-only. Platform differences: on Linux, only top-level symlinks inside a `stateDir` are detected (the startup scan is one level deep) and blocked targets produce a `sandbox: WARNING` line on startup; on macOS, symlinks are followed at any depth and denials happen at runtime — check `log show --predicate 'eventMessage CONTAINS "deny"'`.
 - Tested on x86_64-linux and aarch64-darwin. Other architectures should work but are untested.
 
 ## Similar projects
 
 There are several other tools for sandboxing AI agents. Here are a few:
 
-[**Anthropic sandbox-runtime (srt)**](https://github.com/anthropic-experimental/sandbox-runtime/tree/main) — An npm package that also uses bubblewrap on Linux and sandbox-exec on Macos.
+[Anthropic sandbox-runtime (srt)](https://github.com/anthropic-experimental/sandbox-runtime/tree/main) — An npm package that also uses bubblewrap on Linux and sandbox-exec on Macos.
 
-[**jail.nix**](https://git.sr.ht/~alexdavid/jail.nix) — A nix library for building bubblewrap sandboxes. It's not built to be agent-specific but can be used for agent sandboxing. Linux only.
+[jail.nix](https://git.sr.ht/~alexdavid/jail.nix) — A nix library for building bubblewrap sandboxes. It's not built to be agent-specific but can be used for agent sandboxing. Linux only.
 
-[**jailed-agents**](https://github.com/andersonjoseph/jailed-agents) — A nix library that provides pre-configured per-agent sandboxes using bubblewrap. Linux only.
+[jailed-agents](https://github.com/andersonjoseph/jailed-agents) — A nix library that provides pre-configured per-agent sandboxes using bubblewrap. Linux only.
 
-[**agent-box**](https://github.com/fletchgqc/agentbox) — A rust CLI that uses disposable containers with Jujutsu or Git worktrees. MacOS and Linux.
+[agent-box](https://github.com/fletchgqc/agentbox) — A rust CLI that uses disposable containers with Jujutsu or Git worktrees. MacOS and Linux.
 
-[**ai-jail**](https://github.com/akitaonrails/ai-jail) — A Rust CLI that sandboxes agents using bubblewrap (with Landlock and seccomp) on Linux and sandbox-exec on macOS. Configured via a TOML file in the project directory.
+[ai-jail](https://github.com/akitaonrails/ai-jail) — A Rust CLI that sandboxes agents using bubblewrap (with Landlock and seccomp) on Linux and sandbox-exec on macOS. Configured via a TOML file in the project directory.
