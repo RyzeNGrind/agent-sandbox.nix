@@ -16,19 +16,18 @@ let
     binName = "copilot";
     outName = "copilot-sandboxed";
     allowedPackages = agent-sandbox.commonTools;
-    stateDirs = [
+    rwDirs = [
       "$HOME/.config/github-copilot"
       "$HOME/.copilot"
     ];
-    stateFiles = [ ];
-    extraEnv = {
+    rwFiles = [ ];
+    env = {
       GITHUB_TOKEN = "$GITHUB_TOKEN";
       GIT_AUTHOR_NAME = "copilot";
       GIT_AUTHOR_EMAIL = "copilot@localhost";
       GIT_COMMITTER_NAME = "copilot";
       GIT_COMMITTER_EMAIL = "copilot@localhost";
     };
-    restrictNetwork = true;
     allowedDomains = {
       "githubcopilot.com" = "*";
       "github.com" = "*";

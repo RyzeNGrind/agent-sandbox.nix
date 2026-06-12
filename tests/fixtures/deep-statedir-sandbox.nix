@@ -1,5 +1,5 @@
-# Test fixture: sandbox with a deeply nested stateDir.
-# Exercises ancestor traversal between $HOME and the stateDir target,
+# Test fixture: sandbox with a deeply nested rwDir.
+# Exercises ancestor traversal between $HOME and the rwDir target,
 # ensuring seatbelt grants file-read-metadata on intermediate directories
 # so symlink resolution can reach the allowed path.
 #
@@ -13,6 +13,6 @@ in sandbox.mkSandbox {
   binName = "bash";
   outName = "sandboxed-bash-deep-statedir";
   allowedPackages = [ pkgs.coreutils ];
-  stateDirs = [ "$HOME/.tmp-test-deep-statedir/a/b/c/data" ];
-  stateFiles = [ "$HOME/.tmp-test-deep-statedir/a/b/c/config.json" ];
+  rwDirs = [ "$HOME/.tmp-test-deep-statedir/a/b/c/data" ];
+  rwFiles = [ "$HOME/.tmp-test-deep-statedir/a/b/c/config.json" ];
 }

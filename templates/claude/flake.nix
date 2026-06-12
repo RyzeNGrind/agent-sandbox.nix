@@ -23,9 +23,9 @@
             binName = "claude";
             outName = "claude-sandboxed"; # or whatever alias you'd like
             allowedPackages = sbx.commonTools;
-            stateDirs = [ "$HOME/.claude" ];
-            stateFiles = [ ];
-            extraEnv = {
+            rwDirs = [ "$HOME/.claude" ];
+            rwFiles = [ ];
+            env = {
               # Pass secrets as shell variable references (e.g. "$TOKEN"), not
               # via builtins.getEnv, so they expand at runtime and stay out of
               # the /nix/store.
@@ -37,7 +37,6 @@
               GIT_COMMITTER_NAME = "claude";
               GIT_COMMITTER_EMAIL = "claude@localhost";
             };
-            restrictNetwork = true;
             allowedDomains = {
               "anthropic.com" = "*";
               "claude.com" = "*";

@@ -11,7 +11,6 @@ in sandbox.mkSandbox {
   binName = "bash";
   outName = "sandboxed-bash-net";
   allowedPackages = [ pkgs.coreutils pkgs.bash pkgs.curl ] ++ pkgs.lib.optionals pkgs.stdenv.isLinux [ pkgs.iputils ];
-  restrictNetwork = true;
   allowedDomains = [ "httpbin.test" ];
   _proxyRedirects = { "httpbin.test" = "127.0.0.1:${httpbinPort}"; };
 }

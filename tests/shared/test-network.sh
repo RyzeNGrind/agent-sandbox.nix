@@ -38,7 +38,7 @@ fi
 
 # --- Backward-compat list-format tests ---
 
-# Build a sandbox with restrictNetwork=true and one allowed domain (list format)
+# Build a sandbox with one allowed domain (list format)
 SANDBOXED_NET=$(nix-build --no-out-link --argstr httpbinPort "$LOCAL_HTTPBIN_PORT" "$SCRIPT_DIR/../fixtures/network-allowed.nix")
 NET_SHELL="$SANDBOXED_NET/bin/sandboxed-bash-net"
 run() { "$NET_SHELL" --norc --noprofile -c "$@" >/dev/null 2>&1; }

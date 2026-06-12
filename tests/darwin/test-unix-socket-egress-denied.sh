@@ -2,14 +2,15 @@
 # Test: UNIX-socket egress is denied from inside the sandbox. Regression
 # for SANDBOX-FINDINGS.md §2. Seatbelt cannot scope (remote unix-socket)
 # by path, so the unrestricted allow that used to live in
-# networking.nix's restrictNetwork=true branch let the sandboxed
+# networking.nix's filtered (allowedDomains-set) branch let the sandboxed
 # process connect() to any UNIX socket on the host (Alacritty IPC,
 # launchd listeners, ssh-agent, etc.). The fix drops the allow; this
 # test asserts the connect() is denied.
 #
-# The fixture uses restrictNetwork=true on purpose — under
-# restrictNetwork=false the static profile contains (allow network*),
-# which permits AF_UNIX connect and would mask the regression.
+# The fixture sets allowedDomains on purpose (filtered mode) — with
+# allowedDomains omitted (open mode) the static profile contains
+# (allow network*), which permits AF_UNIX connect and would mask the
+# regression.
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 

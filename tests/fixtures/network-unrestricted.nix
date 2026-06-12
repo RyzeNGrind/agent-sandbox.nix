@@ -7,5 +7,4 @@ in sandbox.mkSandbox {
   binName = "bash";
   outName = "sandboxed-bash-unres";
   allowedPackages = [ pkgs.coreutils pkgs.bash pkgs.curl ];
-  restrictNetwork = false;
 }

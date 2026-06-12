@@ -7,7 +7,7 @@ in sandbox.mkSandbox {
   binName = "bash";
   outName = "sandboxed-bash";
   allowedPackages = [ pkgs.coreutils ];
-  stateDirs = [ "$HOME/.test-state-dir" ];
-  stateFiles = [ "$HOME/.test-state-file" ];
-  extraEnv = { TEST_VAR = "test-value"; };
+  rwDirs = [ "$HOME/.test-state-dir" ];
+  rwFiles = [ "$HOME/.test-state-file" ];
+  env = { TEST_VAR = "test-value"; };
 }

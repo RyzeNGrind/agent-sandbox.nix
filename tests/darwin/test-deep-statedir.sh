@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# Test: ancestor directory traversal for deeply nested stateDirs (Darwin-specific)
+# Test: ancestor directory traversal for deeply nested rwDirs (Darwin-specific)
 # Verifies that file-read-metadata is granted on intermediate directories
-# between $HOME and a stateDir/stateFile target, so that symlink resolution
+# between $HOME and a rwDir/rwFile target, so that symlink resolution
 # from the sandbox HOME can reach the real path through seatbelt.
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 source "$SCRIPT_DIR/../lib.sh"
 
-echo "=== Deep stateDir ancestor traversal tests (Darwin) ==="
+echo "=== Deep rwDir ancestor traversal tests (Darwin) ==="
 echo
 
 SANDBOXED=$(nix-build --no-out-link "$SCRIPT_DIR/../fixtures/deep-statedir-sandbox.nix")
@@ -24,7 +24,7 @@ git init -q
 run() { "$SHELL" --norc --noprofile -c "$@" >/dev/null 2>&1; }
 run_output() { "$SHELL" --norc --noprofile -c "$@" 2>/dev/null; }
 
-# The stateDir is "$HOME/.tmp-test-deep-statedir/a/b/c/data".
+# The rwDir is "$HOME/.tmp-test-deep-statedir/a/b/c/data".
 # Intermediate directories that need file-read-metadata for traversal:
 #   $HOME/.tmp-test-deep-statedir
 #   $HOME/.tmp-test-deep-statedir/a
@@ -38,18 +38,18 @@ INTERMEDIATE2="$HOME/.tmp-test-deep-statedir/a"
 INTERMEDIATE3="$HOME/.tmp-test-deep-statedir/a/b"
 INTERMEDIATE4="$HOME/.tmp-test-deep-statedir/a/b/c"
 
-# --- stateDir read/write through sandbox HOME symlink ---
-expect_ok "can write to deep stateDir" \
+# --- rwDir read/write through sandbox HOME symlink ---
+expect_ok "can write to deep rwDir" \
 	"echo test > \"\$HOME/.tmp-test-deep-statedir/a/b/c/data/test.txt\""
-expect_ok "can read from deep stateDir" \
+expect_ok "can read from deep rwDir" \
 	"cat \"\$HOME/.tmp-test-deep-statedir/a/b/c/data/test.txt\" > /dev/null"
-expect_ok "can remove from deep stateDir" \
+expect_ok "can remove from deep rwDir" \
 	"rm \"\$HOME/.tmp-test-deep-statedir/a/b/c/data/test.txt\""
 
-# --- stateFile read/write through sandbox HOME symlink ---
-expect_ok "can write to deep stateFile" \
+# --- rwFile read/write through sandbox HOME symlink ---
+expect_ok "can write to deep rwFile" \
 	"echo '{\"key\":\"val\"}' > \"\$HOME/.tmp-test-deep-statedir/a/b/c/config.json\""
-expect_ok "can read from deep stateFile" \
+expect_ok "can read from deep rwFile" \
 	"cat \"\$HOME/.tmp-test-deep-statedir/a/b/c/config.json\" > /dev/null"
 
 # --- Intermediate directory traversal (stat must succeed) ---

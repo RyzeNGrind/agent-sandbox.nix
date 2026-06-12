@@ -7,7 +7,6 @@
 }:
 let
   mkAllowlistFile = shared.mkAllowlistFile;
-  hasAllowedDomains = shared.hasAllowedDomains;
   mkProxyStartupBashStr = shared.mkProxyStartupBashStr;
   pastaGatewayIp = "10.0.2.2";
   pastaNamespaceIp = "10.0.2.1";
@@ -41,7 +40,6 @@ if restrictNetwork then
     allowlistFileStr = mkAllowlistFile allowedDomains;
   in
   {
-    warnIgnoredDomainsBashStr = "";
     proxyEnvBubblewrapStr = ''--setenv HTTP_PROXY "http://${pastaGatewayIp}:$_PROXY_PORT" --setenv HTTPS_PROXY "http://${pastaGatewayIp}:$_PROXY_PORT" --setenv http_proxy "http://${pastaGatewayIp}:$_PROXY_PORT" --setenv https_proxy "http://${pastaGatewayIp}:$_PROXY_PORT"'';
 
     caCertBubblewrapStr = ''--ro-bind "$_COMBINED_CA_BUNDLE" /tmp/sandbox-ca-bundle.pem --ro-bind "$_CA_CERT_FILE" /tmp/sandbox-ca-cert.pem --setenv SSL_CERT_FILE /tmp/sandbox-ca-bundle.pem --setenv NIX_SSL_CERT_FILE /tmp/sandbox-ca-bundle.pem --setenv NODE_EXTRA_CA_CERTS /tmp/sandbox-ca-cert.pem --setenv REQUESTS_CA_BUNDLE /tmp/sandbox-ca-bundle.pem'';
@@ -58,14 +56,6 @@ if restrictNetwork then
   }
 else
   {
-    warnIgnoredDomainsBashStr =
-      if (hasAllowedDomains allowedDomains) then
-        # bash
-        ''
-          echo "${shared.warnPrefix} allowedDomains is set but restrictNetwork is false — domains will be ignored" >&2
-        ''
-      else
-        "";
     proxyEnvBubblewrapStr = "";
     caCertBubblewrapStr = "";
     proxyStartupBashStr = "";

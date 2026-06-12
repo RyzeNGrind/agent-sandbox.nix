@@ -23,12 +23,12 @@
             binName = "copilot";
             outName = "copilot-sandboxed"; # or whatever alias you'd like
             allowedPackages = sbx.commonTools;
-            stateDirs = [
+            rwDirs = [
               "$HOME/.config/github-copilot"
               "$HOME/.copilot"
             ];
-            stateFiles = [ ];
-            extraEnv = {
+            rwFiles = [ ];
+            env = {
               # Pass secrets as shell variable references (e.g. "$TOKEN"), not
               # via builtins.getEnv, so they expand at runtime and stay out of
               # the /nix/store.
@@ -38,7 +38,6 @@
               GIT_COMMITTER_NAME = "copilot";
               GIT_COMMITTER_EMAIL = "copilot@localhost";
             };
-            restrictNetwork = true;
             allowedDomains = {
               "githubcopilot.com" = "*";
               "github.com" = "*";

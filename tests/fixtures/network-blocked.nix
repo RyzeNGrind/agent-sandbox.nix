@@ -7,6 +7,5 @@ in sandbox.mkSandbox {
   binName = "bash";
   outName = "sandboxed-bash-block";
   allowedPackages = [ pkgs.coreutils pkgs.bash pkgs.curl ];
-  restrictNetwork = true;
   allowedDomains = [ ];
 }
