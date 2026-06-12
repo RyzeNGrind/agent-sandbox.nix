@@ -57,15 +57,14 @@ let
     pkg = pkgs.claude-code;
     binName = "claude";
     outName = "claude-sandboxed";
-    stateDirs = [
+    rwDirs = [
       "$HOME/.claude"
       "$HOME/.cache/uv"
       "$HOME/.local/share/uv"
     ];
-    stateFiles = [ ];
+    rwFiles = [ ];
     allowedPackages = commonPackages;
-    extraEnv = commonEnv // pkgs.lib.optionalAttrs isLinux linuxEnv;
-    restrictNetwork = true;
+    env = commonEnv // pkgs.lib.optionalAttrs isLinux linuxEnv;
     # Broader domain scoping than claude.shell.nix: uv needs access to all
     # github.com / githubusercontent.com subdomains, plus PyPI for packages.
     allowedDomains = {
@@ -93,7 +92,7 @@ let
 
   # uv and python3 are repeated here (also in allowedPackages above) so they are
   # available both inside the sandbox and in the outer nix-shell for ad-hoc use.
-  # LD_LIBRARY_PATH / UV_NO_MANAGED_PYTHON are similarly duplicated: extraEnv
+  # LD_LIBRARY_PATH / UV_NO_MANAGED_PYTHON are similarly duplicated: env
   # injects them inside the sandbox, while the attrs below set them in the
   # outer nix-shell where uv may also be invoked directly.
 in

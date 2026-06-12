@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# stateDir/stateFile access and symlink resolution tests (Linux-specific)
+# rwDir/rwFile access and symlink resolution tests (Linux-specific)
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
@@ -21,13 +21,13 @@ echo "out-of-bounds content" > "$OOB_FILE"
 trap 'rm -rf "$TESTDIR" "$OOB_FILE"' EXIT
 cd "$TESTDIR"
 
-echo "=== stateDir/stateFile and symlink resolution tests (Linux) ==="
+echo "=== rwDir/rwFile and symlink resolution tests (Linux) ==="
 echo
 
-# --- stateDirs / stateFiles (regression: non-symlink paths) ---
-expect_ok "can write to stateDir" "echo test > \$HOME/.test-state-dir/file && cat \$HOME/.test-state-dir/file"
-expect_ok "can write to stateFile" "echo test > \$HOME/.test-state-file && cat \$HOME/.test-state-file"
-expect_fail "stateDir does not weaken isolation" "ls \$HOME/.ssh"
+# --- rwDirs / rwFiles (regression: non-symlink paths) ---
+expect_ok "can write to rwDir" "echo test > \$HOME/.test-state-dir/file && cat \$HOME/.test-state-dir/file"
+expect_ok "can write to rwFile" "echo test > \$HOME/.test-state-file && cat \$HOME/.test-state-file"
+expect_fail "rwDir does not weaken isolation" "ls \$HOME/.ssh"
 
 # Retrieve store paths baked into the sandbox at build time
 CLOSURE_STORE_FILE=$(run_output 'echo $CLOSURE_STORE_FILE')
@@ -36,42 +36,42 @@ NONCLOSURE_STORE_FILE=$(run_output 'echo $NONCLOSURE_STORE_FILE')
 REAL_FILE="$TESTDIR/real-target-file"
 echo "real content" > "$REAL_FILE"
 
-# --- Test A: stateFile is a symlink to an out-of-bounds path is rejected ---
+# --- Test A: rwFile is a symlink to an out-of-bounds path is rejected ---
 rm -f "$HOME/.test-state-file"
 ln -sfn "$OOB_FILE" "$HOME/.test-state-file"
 
-expect_fail "stateFile symlink to out-of-bounds path: target not accessible (security)" "cat $OOB_FILE"
-expect_ok  "stateFile symlink to out-of-bounds path: sandbox still starts cleanly" "echo ok"
+expect_fail "rwFile symlink to out-of-bounds path: target not accessible (security)" "cat $OOB_FILE"
+expect_ok  "rwFile symlink to out-of-bounds path: sandbox still starts cleanly" "echo ok"
 
-# --- Test B: stateFile is a symlink to a nix store file (in closure) ---
+# --- Test B: rwFile is a symlink to a nix store file (in closure) ---
 rm -f "$HOME/.test-state-file"
 ln -sfn "$CLOSURE_STORE_FILE" "$HOME/.test-state-file"
 
-expect_ok "stateFile symlink to in-closure store file: readable" "cat \$CLOSURE_STORE_FILE"
+expect_ok "rwFile symlink to in-closure store file: readable" "cat \$CLOSURE_STORE_FILE"
 
-# --- Test C: stateDir symlink to out-of-bounds path is rejected ---
+# --- Test C: rwDir symlink to out-of-bounds path is rejected ---
 # Symlinks that point outside /nix/store (and paths already in BOUND_PREFIXES)
 # are silently ignored at startup. An agent could otherwise plant a symlink
 # during a session to expand the sandbox on the next startup
 # (e.g. ~/.claude/evil -> /etc/shadow).
-# Users who need such a target must declare it explicitly as a stateDir or stateFile.
+# Users who need such a target must declare it explicitly as a rwDir or rwFile.
 rm -f "$HOME/.test-state-file"; touch "$HOME/.test-state-file"
 mkdir -p "$HOME/.test-state-dir"
 ln -sfn "$OOB_FILE" "$HOME/.test-state-dir/link-to-oob"
 
-expect_fail "stateDir symlink to out-of-bounds path: target not accessible (security)" "cat $OOB_FILE"
-expect_ok  "stateDir symlink to out-of-bounds path: sandbox still starts cleanly" "echo ok"
+expect_fail "rwDir symlink to out-of-bounds path: target not accessible (security)" "cat $OOB_FILE"
+expect_ok  "rwDir symlink to out-of-bounds path: sandbox still starts cleanly" "echo ok"
 
-# --- Test D: stateDir contains a symlink to a nix store file NOT in closure ---
+# --- Test D: rwDir contains a symlink to a nix store file NOT in closure ---
 ln -sfn "$NONCLOSURE_STORE_FILE" "$HOME/.test-state-dir/link-to-nonclosure"
 
-expect_ok "stateDir symlink to non-closure store file: readable" "test -e \$NONCLOSURE_STORE_FILE"
-expect_fail "stateDir symlink to non-closure store file: not writable" "echo x >> \$NONCLOSURE_STORE_FILE"
+expect_ok "rwDir symlink to non-closure store file: readable" "test -e \$NONCLOSURE_STORE_FILE"
+expect_fail "rwDir symlink to non-closure store file: not writable" "echo x >> \$NONCLOSURE_STORE_FILE"
 
-# --- Test E: stateDir contains a symlink to a nix store file already in closure ---
+# --- Test E: rwDir contains a symlink to a nix store file already in closure ---
 ln -sfn "$CLOSURE_STORE_FILE" "$HOME/.test-state-dir/link-to-closure"
 
-expect_ok "stateDir symlink to in-closure store file: readable" "cat \$CLOSURE_STORE_FILE"
+expect_ok "rwDir symlink to in-closure store file: readable" "cat \$CLOSURE_STORE_FILE"
 
 # --- Test F: deduplication: two symlinks to the same Nix store target ---
 # Both symlinks point at the same non-closure store path; bwrap must only
@@ -90,7 +90,7 @@ rm -f "$HOME/.test-state-dir/link-to-oob" \
       "$HOME/.test-state-dir/dup-link-1" \
       "$HOME/.test-state-dir/dup-link-2"
 
-# --- Test H: stateDir double-symlink chain with an out-of-bounds intermediate ---
+# --- Test H: rwDir double-symlink chain with an out-of-bounds intermediate ---
 # Both the intermediate path (/tmp/...) and the final target are outside
 # the permitted sandbox paths, so the first hop is rejected and the chain
 # is not bound. The sandbox still starts cleanly.

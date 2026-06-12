@@ -31,19 +31,19 @@ expect_ok "can write to /tmp" "touch /tmp/sandbox-test && rm /tmp/sandbox-test"
 expect_ok "can read /etc/resolv.conf" "cat /etc/resolv.conf > /dev/null"
 expect_ok "can run allowed binaries" "ls / > /dev/null"
 
-# --- stateDirs / stateFiles / extraEnv ---
+# --- rwDirs / rwFiles / env ---
 if [ "$(run_output 'echo $TEST_VAR')" = "test-value" ]; then
-	echo "PASS: extraEnv variable is accessible"
+	echo "PASS: env variable is accessible"
 	PASS=$((PASS + 1))
 else
-	echo "FAIL: extraEnv variable not accessible"
+	echo "FAIL: env variable not accessible"
 	FAIL=$((FAIL + 1))
 fi
 
 # --- Environment isolation (env -i) ---
 export _TEST_HOST_VAR="should-not-propagate"
 if [ -z "$(run_output 'echo $_TEST_HOST_VAR')" ]; then
-	echo "PASS: host env vars not in extraEnv are not propagated"
+	echo "PASS: host env vars not in env are not propagated"
 	PASS=$((PASS + 1))
 else
 	echo "FAIL: host env var leaked into sandbox"

@@ -7,7 +7,6 @@
 }:
 let
   mkAllowlistFile = shared.mkAllowlistFile;
-  hasAllowedDomains = shared.hasAllowedDomains;
   mkProxyStartupBashStr = shared.mkProxyStartupBashStr;
 in
 if restrictNetwork then
@@ -15,7 +14,6 @@ if restrictNetwork then
     allowlistFileStr = mkAllowlistFile allowedDomains;
   in
   {
-    warnIgnoredDomainsBashStr = "";
     proxyEnvInlineBashStr =
       # bash
       ''HTTP_PROXY="http://127.0.0.1:$_PROXY_PORT" HTTPS_PROXY="http://127.0.0.1:$_PROXY_PORT" http_proxy="http://127.0.0.1:$_PROXY_PORT" https_proxy="http://127.0.0.1:$_PROXY_PORT"'';
@@ -56,14 +54,6 @@ if restrictNetwork then
   }
 else
   {
-    warnIgnoredDomainsBashStr =
-      if (hasAllowedDomains allowedDomains) then
-        # bash
-        ''
-          echo "${shared.warnPrefix} allowedDomains is set but restrictNetwork is false — domains will be ignored" >&2
-        ''
-      else
-        "";
     proxyEnvInlineBashStr = "";
     caCertEnvInlineBashStr =
       # bash

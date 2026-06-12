@@ -1,13 +1,13 @@
 # Debugging shell: drops you into a bash session inside the sandbox.
-# Mirror the stateDirs, stateFiles, and allowedPackages from your agent config
+# Mirror the rwDirs, rwFiles, and allowedPackages from your agent config
 # to reproduce the exact environment your agent will see.
 #
 # Usage:
 #   nix-shell debug/bash.shell.nix
 #
 # Once inside, try:
-#   ls $HOME                   # empty ephemeral tmpfs with symlinks to stateDirs/stateFiles
-#   cat $HOME/.claude.json     # should work if in stateFiles
+#   ls $HOME                   # empty ephemeral tmpfs with symlinks to rwDirs/rwFiles
+#   cat $HOME/.claude.json     # should work if in rwFiles
 #   ls /tmp                    # should be writable scratch space
 #   curl https://httpbin.org/get       # allowed domain (GET only) — should work
 #   curl -X POST https://httpbin.org/post  # blocked method — should fail
@@ -24,10 +24,9 @@ let
     outName = "bash-sandboxed";
     allowedPackages = [ pkgs.coreutils pkgs.curl pkgs.git pkgs.which ];
     # Mirror these from your agent config:
-    stateDirs = [ "$HOME/.claude" ];
-    stateFiles = [ "$HOME/.claude.json" ];
-    extraEnv = { HELLO = "world"; };
-    restrictNetwork = true;
+    rwDirs = [ "$HOME/.claude" ];
+    rwFiles = [ "$HOME/.claude.json" ];
+    env = { HELLO = "world"; };
     allowedDomains = { "httpbin.org" = [ "GET" ]; };
   };
 in pkgs.mkShell {

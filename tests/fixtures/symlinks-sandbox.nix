@@ -1,4 +1,4 @@
-# Test fixture: stateDir/stateFile access and symlink resolution
+# Test fixture: rwDir/rwFile access and symlink resolution
 let
   pkgs = import <nixpkgs> { };
   sandbox = import ../../default.nix { pkgs = pkgs; };
@@ -7,9 +7,9 @@ in sandbox.mkSandbox {
   binName = "bash";
   outName = "sandboxed-bash-symlinks";
   allowedPackages = [ pkgs.coreutils ];
-  stateDirs = [ "$HOME/.test-state-dir" ];
-  stateFiles = [ "$HOME/.test-state-file" ];
-  extraEnv = {
+  rwDirs = [ "$HOME/.test-state-dir" ];
+  rwFiles = [ "$HOME/.test-state-file" ];
+  env = {
     # A nix store path NOT in the closure — for testing that symlink targets
     # outside the closure are bound read-only. (pkgs.hello is not in
     # allowedPackages, so its store path is inaccessible without symlink resolution.)

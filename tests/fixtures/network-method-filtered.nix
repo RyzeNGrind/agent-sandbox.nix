@@ -11,7 +11,6 @@ in sandbox.mkSandbox {
   binName = "bash";
   outName = "sandboxed-bash-methods";
   allowedPackages = [ pkgs.coreutils pkgs.bash pkgs.curl ];
-  restrictNetwork = true;
   allowedDomains = {
     "httpbin.test" = [ "GET" "HEAD" ];
     "pie.test" = "*";

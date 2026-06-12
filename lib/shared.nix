@@ -46,10 +46,6 @@ let
           allowedDomains;
     in
     pkgs.writeText "sandbox-allowlist.json" (builtins.toJSON attrset);
-  # Returns true if allowedDomains is non-empty (works for both list and attrset).
-  hasAllowedDomains =
-    allowedDomains:
-    if builtins.isList allowedDomains then allowedDomains != [ ] else allowedDomains != { };
   # Internal: serializes _proxyRedirects ({ host = "addr:port"; ... }) to the
   # SANDBOX_PROXY_REDIRECT env var value the proxy expects. Empty redirects
   # produces an empty string so the env var is not set at all in production.
@@ -70,37 +66,70 @@ let
     allowlistFileStr: listenAddr: redirects:
     # bash
     ''
-    # Start the MITM proxy and read its port via FIFO
-    _CA_CERT_FILE=$(mktemp /tmp/sandbox-ca-cert.XXXXXX)
-    _PROXY_PORT_FIFO=$(mktemp -u /tmp/sandbox-proxy-port.XXXXXX)
-    mkfifo "$_PROXY_PORT_FIFO"
-    # Open FIFO read-write so neither side blocks waiting for the other
-    exec 3<> "$_PROXY_PORT_FIFO"
-    ${mkRedirectsEnvBashStr redirects}${sandboxProxy}/bin/sandbox-proxy ${allowlistFileStr} "$_CA_CERT_FILE" ${listenAddr} > "$_PROXY_PORT_FIFO" 2>>/tmp/sandbox-proxy.log &
-    _PROXY_PID=$!
-    # Block until the proxy writes its port (or 5s timeout via background kill)
-    ( sleep 5 && kill -0 $$ 2>/dev/null && echo >&2 "${errorPrefix} sandbox proxy timed out" && kill $$ ) &
-    _TIMEOUT_PID=$!
-    _PROXY_PORT=$(head -1 <&3)
-    exec 3<&-
-    kill $_TIMEOUT_PID 2>/dev/null
-    wait $_TIMEOUT_PID 2>/dev/null || true
-    rm -f "$_PROXY_PORT_FIFO"
-    if [ -z "$_PROXY_PORT" ]; then
-      echo "${errorPrefix} sandbox proxy failed to start (check /tmp/sandbox-proxy.log)" >&2
-      kill $_PROXY_PID 2>/dev/null
-      exit 1
-    fi
-    # Create a combined CA bundle: system certs + proxy's ephemeral CA
-    _COMBINED_CA_BUNDLE=$(mktemp /tmp/sandbox-ca-bundle.XXXXXX)
-    cat ${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt "$_CA_CERT_FILE" > "$_COMBINED_CA_BUNDLE"
-  '';
+      # Start the MITM proxy and read its port via FIFO
+      _CA_CERT_FILE=$(mktemp /tmp/sandbox-ca-cert.XXXXXX)
+      _PROXY_PORT_FIFO=$(mktemp -u /tmp/sandbox-proxy-port.XXXXXX)
+      mkfifo "$_PROXY_PORT_FIFO"
+      # Open FIFO read-write so neither side blocks waiting for the other
+      exec 3<> "$_PROXY_PORT_FIFO"
+      ${mkRedirectsEnvBashStr redirects}${sandboxProxy}/bin/sandbox-proxy ${allowlistFileStr} "$_CA_CERT_FILE" ${listenAddr} > "$_PROXY_PORT_FIFO" 2>>/tmp/sandbox-proxy.log &
+      _PROXY_PID=$!
+      # Block until the proxy writes its port (or 5s timeout via background kill)
+      ( sleep 5 && kill -0 $$ 2>/dev/null && echo >&2 "${errorPrefix} sandbox proxy timed out" && kill $$ ) &
+      _TIMEOUT_PID=$!
+      _PROXY_PORT=$(head -1 <&3)
+      exec 3<&-
+      kill $_TIMEOUT_PID 2>/dev/null
+      wait $_TIMEOUT_PID 2>/dev/null || true
+      rm -f "$_PROXY_PORT_FIFO"
+      if [ -z "$_PROXY_PORT" ]; then
+        echo "${errorPrefix} sandbox proxy failed to start (check /tmp/sandbox-proxy.log)" >&2
+        kill $_PROXY_PID 2>/dev/null
+        exit 1
+      fi
+      # Create a combined CA bundle: system certs + proxy's ephemeral CA
+      _COMBINED_CA_BUNDLE=$(mktemp /tmp/sandbox-ca-bundle.XXXXXX)
+      cat ${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt "$_CA_CERT_FILE" > "$_COMBINED_CA_BUNDLE"
+    '';
+  assertNoLegacyArgs =
+    {
+      restrictNetwork,
+      extraEnv,
+      stateDirs,
+      stateFiles,
+    }:
+    let
+      legacyArgHints = {
+        restrictNetwork =
+          if restrictNetwork != null then
+            "The 'restrictNetwork' argument is deprecated. Network access is now controlled by 'allowedDomains' alone:\n  - omit it for open internet\n  - set a list/attrset to filter\n  - set to [] to block all\nSee the migration guide: https://github.com/archie-judd/agent-sandbox.nix"
+          else
+            null;
+        extraEnv =
+          if extraEnv != null then "The 'extraEnv' argument is deprecated. Use 'env' instead." else null;
+        stateDirs =
+          if stateDirs != null then "The 'stateDirs' argument is deprecated. Use 'rwDirs' instead." else null;
+        stateFiles =
+          if stateFiles != null then
+            "The 'stateFiles' argument is deprecated. Use 'rwFiles' instead."
+          else
+            null;
+      };
+      throwMsgHints = builtins.concatStringsSep "\n\n" (
+        builtins.attrValues (pkgs.lib.filterAttrs (_: v: v != null) legacyArgHints)
+      );
+      throwMsg = "${errorPrefix} Deprecated arguments:\n\n${throwMsgHints}\n\nPlease update your configuration accordingly.";
+    in
+    if restrictNetwork != null || extraEnv != null || stateDirs != null || stateFiles != null then
+      builtins.throw throwMsg
+    else
+      null;
 in
 {
   bashWrapper = bashWrapper;
   mkAllowlistFile = mkAllowlistFile;
-  hasAllowedDomains = hasAllowedDomains;
   mkProxyStartupBashStr = mkProxyStartupBashStr;
   warnPrefix = warnPrefix;
   errorPrefix = errorPrefix;
+  assertNoLegacyArgs = assertNoLegacyArgs;
 }

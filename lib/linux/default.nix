@@ -28,8 +28,8 @@
                       mounted rw on top of this.
       Read-write bind mounts:
         $CWD        — the project directory (always)
-        stateDirs   — each path gets a --bind (e.g., ~/.config/claude)
-        stateFiles  — each path gets a --bind (e.g., specific rc files)
+        rwDirs      — each path gets a --bind (e.g., ~/.config/claude)
+        rwFiles     — each path gets a --bind (e.g., specific rc files)
         $GIT_DIR    — the .git dir, auto-detected. Needed when CWD is a
                       worktree and .git/common is outside CWD.
       Symlinks:
@@ -52,7 +52,7 @@
       "No such file or directory":
         The binary is trying to access a path that isn't mounted.
         Run the wrapper with `strace -f -e trace=openat` to find the
-        path, then add it to stateDirs/stateFiles.
+        path, then add it to rwDirs/rwFiles.
 
       "Operation not permitted" on /proc or /dev:
         Unprivileged user namespaces may be disabled on the host.
@@ -75,16 +75,22 @@
   binName,
   outName,
   allowedPackages,
-  stateDirs ? [ ],
-  stateFiles ? [ ],
-  extraEnv ? { },
-  restrictNetwork ? false,
-  allowedDomains ? [ ],
+  rwDirs ? [ ],
+  rwFiles ? [ ],
+  env ? { },
+  allowedDomains ? null,
   # Internal: maps "host" → "addr:port" so the proxy dials the local address
   # for those hosts instead of resolving the original. Used by the test
   # harness to point fake domains at a local httpbin. Not part of the
   # public API — leading underscore signals internal-only.
   _proxyRedirects ? { },
+  # Legacy args that should not be used in new code. Still accepted for
+  # backward compatibility, but will throw an error if used with
+  # assertNoLegacyArgs.
+  restrictNetwork ? null,
+  extraEnv ? null,
+  stateDirs ? null,
+  stateFiles ? null,
 }:
 let
   bashWrapper = shared.bashWrapper;
@@ -98,12 +104,12 @@ let
     ::1       localhost
   '';
   pathStr = pkgs.lib.makeBinPath (allowedPackages ++ implicitPackages);
-  mkDirsStr = builtins.concatStringsSep "\n" (map (dir: ''mkdir -p "${dir}"'') stateDirs);
-  mkFilesStr = builtins.concatStringsSep "\n" (map (file: ''touch "${file}"'') stateFiles);
-  bindDirsStr = builtins.concatStringsSep " " (map (dir: ''--bind "${dir}" "${dir}"'') stateDirs);
-  # Adds each stateDir to the BOUND_PREFIXES shell array at runtime
+  mkDirsStr = builtins.concatStringsSep "\n" (map (dir: ''mkdir -p "${dir}"'') rwDirs);
+  mkFilesStr = builtins.concatStringsSep "\n" (map (file: ''touch "${file}"'') rwFiles);
+  bindDirsStr = builtins.concatStringsSep " " (map (dir: ''--bind "${dir}" "${dir}"'') rwDirs);
+  # Adds each rwDir to the BOUND_PREFIXES shell array at runtime
   stateDirsBoundPrefixBashStr = builtins.concatStringsSep "\n" (
-    map (dir: ''BOUND_PREFIXES+=("${dir}")'') stateDirs
+    map (dir: ''BOUND_PREFIXES+=("${dir}")'') rwDirs
   );
 
   symlinkHelpers = import ./symlink-helpers.nix {
@@ -125,23 +131,23 @@ let
       ${symlinkHelpers.addSymlinkTargetBashStr}
       ${symlinkHelpers.followSymlinkChainBashStr}
 
-      # Resolve stateFile symlinks — bind resolved targets, not the symlink paths
+      # Resolve rwFile symlinks — bind resolved targets, not the symlink paths
       STATE_FILE_BINDS=""
-      ${builtins.concatStringsSep "\n" (map symlinkHelpers.mkResolveFileBashStr stateFiles)}
+      ${builtins.concatStringsSep "\n" (map symlinkHelpers.mkResolveFileBashStr rwFiles)}
 
-      # Scan stateDirs for internal symlinks and bind their resolved targets
-      ${builtins.concatStringsSep "\n" (map symlinkHelpers.mkScanDirBashStr stateDirs)}
+      # Scan rwDirs for internal symlinks and bind their resolved targets
+      ${builtins.concatStringsSep "\n" (map symlinkHelpers.mkScanDirBashStr rwDirs)}
     '';
 
   extraEnvStr = builtins.concatStringsSep " " (
-    map (name: "--setenv ${name} ${builtins.toJSON extraEnv.${name}}") (builtins.attrNames extraEnv)
+    map (name: "--setenv ${name} ${builtins.toJSON env.${name}}") (builtins.attrNames env)
   );
 
   conditionalNetworkingParams = import ./networking.nix {
     pkgs = pkgs;
     shared = shared;
-    restrictNetwork = restrictNetwork;
-    allowedDomains = allowedDomains;
+    restrictNetwork = allowedDomains != null;
+    allowedDomains = if allowedDomains != null then allowedDomains else [ ];
     _proxyRedirects = _proxyRedirects;
   };
 
@@ -214,74 +220,83 @@ let
     '';
 
 in
-pkgs.writeTextFile {
-  name = outName;
-  executable = true;
-  destination = "/bin/${outName}";
-  text =
-    # bash
-    ''
-        #!${pkgs.bashInteractive}/bin/bash
-        CWD=$(pwd)
-        ${conditionalNetworkingParams.warnIgnoredDomainsBashStr}
-        ${mkDirsStr}
-        ${mkFilesStr}
-        ${gitDetectionBashStr}
 
-        # Build per-path ro-bind flags for the nix store closure
-        CLOSURE_BINDS=""
-        BOUND_PREFIXES=()
-        while IFS= read -r storePath; do
-          CLOSURE_BINDS="$CLOSURE_BINDS --ro-bind $storePath $storePath"
-          BOUND_PREFIXES+=("$storePath")
-        done < ${closurePathsFile}
+builtins.seq
+  (shared.assertNoLegacyArgs {
+    restrictNetwork = restrictNetwork;
+    extraEnv = extraEnv;
+    stateDirs = stateDirs;
+    stateFiles = stateFiles;
+  })
+  (
+    pkgs.writeTextFile {
+      name = outName;
+      executable = true;
+      destination = "/bin/${outName}";
+      text =
+        # bash
+        ''
+            #!${pkgs.bashInteractive}/bin/bash
+            CWD=$(pwd)
+            ${mkDirsStr}
+            ${mkFilesStr}
+            ${gitDetectionBashStr}
 
-      ${symlinkResolutionBashStr}
-      ${sandboxPasswdBashStr}
-      ${conditionalNetworkingParams.proxyStartupBashStr}
-      ${trapBashStr}
-      ${conditionalNetworkingParams.sandboxExecBashStr}${pkgs.coreutils}/bin/env -i ${pkgs.bubblewrap}/bin/bwrap \
-        ${conditionalNetworkingParams.etcResolvBind} \
-        --tmpfs /nix/store \
-        $CLOSURE_BINDS \
-        --ro-bind "$_SANDBOX_PASSWD" /etc/passwd \
-        --ro-bind ${hostsFile} /etc/hosts \
-        --ro-bind-try /etc/ssl/certs /etc/ssl/certs \
-        --ro-bind-try /etc/static /etc/static \
-        --ro-bind-try /etc/pki /etc/pki \
-        --proc /proc \
-        --ro-bind ${emptyFile} /proc/cmdline \
-        --ro-bind ${emptyFile} /proc/sys/kernel/random/boot_id \
-        --dev /dev \
-        --tmpfs /tmp \
-        --tmpfs "$HOME" \
-        $REPO_BIND \
-        --bind "$CWD" "$CWD" \
-        ${bindDirsStr} \
-        $STATE_FILE_BINDS \
-        $SYMLINK_PARENT_DIRS \
-        $readonlyStateFileSymlinks \
-        $GIT_BIND \
-        --symlink ${bashWrapper}/bin/bash /bin/sh \
-        --symlink ${pkgs.coreutils}/bin/env /usr/bin/env \
-        --unshare-all \
-        --hostname sandbox \
-        --uid "$(id -u)" \
-        --gid "$(id -g)" \
-        --share-net \
-        --die-with-parent \
-        --chdir "$CWD" \
-        --clearenv \
-        --setenv HOME "$HOME" \
-        --setenv TERM "$TERM" \
-        --setenv SHELL "${bashWrapper}/bin/bash" \
-        --setenv PATH "${pathStr}" \
-        --setenv SSL_CERT_DIR "${pkgs.cacert}/etc/ssl/certs" \
-        --setenv TMPDIR /tmp \
-        ${conditionalNetworkingParams.sslCertEnvBubblewrapStr} \
-        ${conditionalNetworkingParams.caCertBubblewrapStr} \
-        ${conditionalNetworkingParams.proxyEnvBubblewrapStr} \
-        ${extraEnvStr} \
-        ${pkg}/bin/${binName} "$@"
-    '';
-}
+            # Build per-path ro-bind flags for the nix store closure
+            CLOSURE_BINDS=""
+            BOUND_PREFIXES=()
+            while IFS= read -r storePath; do
+              CLOSURE_BINDS="$CLOSURE_BINDS --ro-bind $storePath $storePath"
+              BOUND_PREFIXES+=("$storePath")
+            done < ${closurePathsFile}
+
+          ${symlinkResolutionBashStr}
+          ${sandboxPasswdBashStr}
+          ${conditionalNetworkingParams.proxyStartupBashStr}
+          ${trapBashStr}
+          ${conditionalNetworkingParams.sandboxExecBashStr}${pkgs.coreutils}/bin/env -i ${pkgs.bubblewrap}/bin/bwrap \
+            ${conditionalNetworkingParams.etcResolvBind} \
+            --tmpfs /nix/store \
+            $CLOSURE_BINDS \
+            --ro-bind "$_SANDBOX_PASSWD" /etc/passwd \
+            --ro-bind ${hostsFile} /etc/hosts \
+            --ro-bind-try /etc/ssl/certs /etc/ssl/certs \
+            --ro-bind-try /etc/static /etc/static \
+            --ro-bind-try /etc/pki /etc/pki \
+            --proc /proc \
+            --ro-bind ${emptyFile} /proc/cmdline \
+            --ro-bind ${emptyFile} /proc/sys/kernel/random/boot_id \
+            --dev /dev \
+            --tmpfs /tmp \
+            --tmpfs "$HOME" \
+            $REPO_BIND \
+            --bind "$CWD" "$CWD" \
+            ${bindDirsStr} \
+            $STATE_FILE_BINDS \
+            $SYMLINK_PARENT_DIRS \
+            $readonlyStateFileSymlinks \
+            $GIT_BIND \
+            --symlink ${bashWrapper}/bin/bash /bin/sh \
+            --symlink ${pkgs.coreutils}/bin/env /usr/bin/env \
+            --unshare-all \
+            --hostname sandbox \
+            --uid "$(id -u)" \
+            --gid "$(id -g)" \
+            --share-net \
+            --die-with-parent \
+            --chdir "$CWD" \
+            --clearenv \
+            --setenv HOME "$HOME" \
+            --setenv TERM "$TERM" \
+            --setenv SHELL "${bashWrapper}/bin/bash" \
+            --setenv PATH "${pathStr}" \
+            --setenv SSL_CERT_DIR "${pkgs.cacert}/etc/ssl/certs" \
+            --setenv TMPDIR /tmp \
+            ${conditionalNetworkingParams.sslCertEnvBubblewrapStr} \
+            ${conditionalNetworkingParams.caCertBubblewrapStr} \
+            ${conditionalNetworkingParams.proxyEnvBubblewrapStr} \
+            ${extraEnvStr} \
+            ${pkg}/bin/${binName} "$@"
+        '';
+    }
+  )
