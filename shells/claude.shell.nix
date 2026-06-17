@@ -6,19 +6,17 @@
 #   nix-shell shells/claude.shell.nix
 let
   pkgs = import <nixpkgs> { config.allowUnfree = true; };
-  agent-sandbox = import ../. {
-    pkgs = pkgs;
-  };
+  agent-sandbox =
+    import (fetchTarball "https://github.com/archie-judd/agent-sandbox.nix/archive/main.tar.gz")
+      {
+        pkgs = pkgs;
+      };
   claude-sandboxed = agent-sandbox.mkSandbox {
     pkg = pkgs.claude-code;
     binName = "claude";
     outName = "claude-sandboxed";
     allowedPackages = agent-sandbox.commonTools;
     rwDirs = [ "$HOME/.claude" ];
-    roFiles = [
-      "$HOME/.config/git/config"
-      "$HOME/testy2.sh"
-    ];
     # Bind your host gitconfig read-only for git identity (recommended).
     # Set user.name / user.email on the host first, then uncomment:
     # roFiles = [ "$HOME/.config/git/config" ];
