@@ -21,13 +21,13 @@ echo
 run() { "$NIX_SUPPORT_SHELL" --norc --noprofile -c "$@" >/dev/null 2>&1; }
 
 expect_ok "nix build succeeds with allowNix" \
-    'nix build nixpkgs#hello --no-link'
+    'nix build "path:$NIXPKGS_SRC#hello" --no-link'
 
 expect_ok "nix run succeeds with allowNix" \
-    'nix run nixpkgs#hello'
+    'nix run "path:$NIXPKGS_SRC#hello"'
 
 expect_ok "nix develop succeeds with allowNix" \
-    'nix develop nixpkgs#hello -c true'
+    'nix develop "path:$NIXPKGS_SRC#hello" -c true'
 
 run() { "$BASIC_SHELL" --norc --noprofile -c "$@" >/dev/null 2>&1; }
 
